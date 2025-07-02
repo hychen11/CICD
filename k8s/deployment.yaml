@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: cicd-app
-          image: hychen11/cicd:latest
+          image: zjuchy/cicd:latest
           ports:
             - containerPort: 5000
 ---

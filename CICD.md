@@ -15,6 +15,27 @@ kubectl get ns
 
 # continuous integration and continuous delivery
 
+```
+          你（开发者）
+               ↓
+    ┌─────────────────────┐
+    │  Push 到 GitHub 仓库 │   （触发 GitHub Actions）
+    └─────────────────────┘
+               ↓
+    ┌─────────────────────┐
+    │ GitHub Actions 构建镜像│  ➝ 构建并推送到 Docker Hub: zjuchy/cicd:latest
+    └─────────────────────┘
+               ↓
+    ┌─────────────────────┐
+    │    ArgoCD 发现变更    │  （你配置的 deployment.yaml 使用最新镜像）
+    └─────────────────────┘
+               ↓
+    ┌─────────────────────┐
+    │ 自动更新 Kubernetes   │
+    └─────────────────────┘
+
+```
+
 其中CI主要依靠的Github Actions
 
 CD主要依靠的ArgoCD
@@ -29,27 +50,44 @@ https://github.com/hychen11/CICD/settings/secrets/actions
 
 # Github Actions
 
-create `.github/workflows/github-actions-demo.yml`
+注意这里不仅需要在github上创建repo，同时dockerhub也要创建repo！比如这里的zjuchy/cicd
+
+这个`ci.yml`的作用就是告诉 GitHub Actions 去构建并推送镜像到 Docker Hub
+
+create `.github/workflows/ci.yml`
 
 ```
-name: GitHub Actions Demo
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
-on: [push]
+(base) ➜  workflows git:(main) ✗ cat ci.yml 
+name: Build and Push Docker Image to DockerHub
+
+on:
+  push:
+    branches:
+      - main  # 推送到 main 分支触发
+
 jobs:
-  Explore-GitHub-Actions:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
-      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-      - name: List files in the repository
-        run: |
-          ls ${{ github.workspace }}
-      - run: echo "🍏 This job's status is ${{ job.status }}."
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: zjuchy/cicd:latest
 
 ```
 
@@ -137,9 +175,5 @@ argocd app sync cicd-app #手动同步
 kubectl get pods -n default -l app=cicd-app  #检查 Pod 状态
 ```
 
-
-
-
-
-![Argo CD Architecture](https://argo-cd.readthedocs.io/en/stable/assets/argocd_architecture.png)
+<img src="https://argo-cd.readthedocs.io/en/stable/assets/argocd_architecture.png" alt="Argo CD Architecture" style="zoom:33%;" />
 
