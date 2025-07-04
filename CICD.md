@@ -1,5 +1,15 @@
 # K8S
 
+k8s的service有多种
+
+ClusterIP **集群内访问**，其他 Pod 可以访问这个 Service
+
+NodePort 在每个节点的端口暴露给集群外部
+
+LoadBalancer  云厂商提供公网 IP
+
+ExternalName 转发到外部的 DNS 名称
+
 ```bash
 brew install kubectl
 kubectl version --client
@@ -176,4 +186,82 @@ kubectl get pods -n default -l app=cicd-app  #检查 Pod 状态
 ```
 
 <img src="https://argo-cd.readthedocs.io/en/stable/assets/argocd_architecture.png" alt="Argo CD Architecture" style="zoom:33%;" />
+
+登陆密码
+
+```shell
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+```
+
+k8s的配置文件`deployment.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cicd-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cicd-app
+  template:
+    metadata:
+      labels:
+        app: cicd-app
+    spec:
+      containers:
+        - name: cicd-app
+          image: zjuchy/cicd:latest
+          ports:
+            - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cicd-service
+spec:
+  selector:
+    app: cicd-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+  type: ClusterIP
+```
+
+创建一个`cicd-service` 的 Service，内部访问端口80
+
+service会把收到的请求转发到Pod到5000端口，然后Service会找到所有标签 app=cicd-app的pod
+
+`kustomization.yaml `
+
+```yaml
+resources:
+ \- deployment.yaml
+```
+
+暴露端口的话 type是NodePort，适合本地测试
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: cicd-service
+spec:
+  selector:
+    app: cicd-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+      nodePort: 30001
+  type: NodePort
+```
+
+
+
+```css
+[ Cluster 内部访问 80 端口 ] --> [ cicd-service (ClusterIP) ] --> [ cicd-app Pod :5000 ]
+```
 
