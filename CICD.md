@@ -288,3 +288,12 @@ kind create cluster --config kind-config.yaml
 [ Cluster 内部访问 80 端口 ] --> [ cicd-service (ClusterIP) ] --> [ cicd-app Pod :5000 ]
 ```
 
+
+
+
+
+```
+kind get clusters
+
+```
+
