@@ -103,6 +103,8 @@ jobs:
 
 # ArgoCD
 
+如果kind重新运行，也就是集群重新部署，这里也要重新运行argocd！
+
 ```shell
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
@@ -259,7 +261,28 @@ spec:
   type: NodePort
 ```
 
+```shell
+kubectl get svc cicd-service
+kubectl get nodes -o wide
+kubectl get pods -l app=cicd-app
+```
 
+kind是模拟docker容器的，(Kubernetes In Docker)这里配置一个`kind-config.yaml` ，kind用于快速创建一个kubernetes cluster的
+
+```yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30001
+        hostPort: 30001
+```
+
+```shell
+kind delete cluster    # 删除已有的集群（如果有）
+kind create cluster --config kind-config.yaml
+```
 
 ```css
 [ Cluster 内部访问 80 端口 ] --> [ cicd-service (ClusterIP) ] --> [ cicd-app Pod :5000 ]
